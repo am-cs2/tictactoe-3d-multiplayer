@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Prueba de conexión Socket.IO</title>
+<style>
+  body { font-family: sans-serif; padding: 30px; background: #111; color: #eee; }
+  button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+  #log { margin-top: 20px; padding: 10px; background: #222; border-radius: 8px; min-height: 150px; }
+  .msg { padding: 4px 0; border-bottom: 1px solid #333; }
+  #estado { font-weight: bold; }
+  #estado.ok { color: #4caf50; }
+  #estado.error { color: #f44336; }
+</style>
+</head>
+<body>
+  <h1>Prueba de conexión Socket.IO</h1>
+  <p>Estado: <span id="estado">conectando...</span></p>
+  <p>Mi ID de socket: <code id="miId">-</code></p>
+  <button id="btnEnviar">Enviar mensaje de prueba</button>
+  <div id="log"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const estadoEl = document.getElementById('estado');
+    const miIdEl = document.getElementById('miId');
+    const logEl = document.getElementById('log');
+
+    socket.on('connect', () => {
+      estadoEl.textContent = 'conectado ✅';
+      estadoEl.className = 'ok';
+      miIdEl.textContent = socket.id;
+    });
+
+    socket.on('disconnect', () => {
+      estadoEl.textContent = 'desconectado ❌';
+      estadoEl.className = 'error';
+    });
+
+    socket.on('ping-test', (data) => {
+      const p = document.createElement('div');
+      p.className = 'msg';
+      p.textContent = `📩 Mensaje de ${data.from}: "${data.texto}"`;
+      logEl.prepend(p);
+    });
+
+    document.getElementById('btnEnviar').addEventListener('click', () => {
+      const texto = 'Hola desde ' + socket.id;
+      socket.emit('ping-test', { texto });
+      const p = document.createElement('div');
+      p.className = 'msg';
+      p.textContent = `📤 Yo envié: "${texto}"`;
+      logEl.prepend(p);
+    });
+  </script>
+</body>
+</html>

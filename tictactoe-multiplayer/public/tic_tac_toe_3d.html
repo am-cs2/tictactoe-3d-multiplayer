@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tic Tac Toe 3D · 4×4×4</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Geist+Pixel&family=Lora:ital,wght@0,400..700;1,400..700&display=swap');
+
+  :root{
+    --bg-deep: #47adda;
+    --bg-panel: #ff0000;
+    --line: #3367FF;
+    --ember: #FFFF0A;
+    --violet: #b09bf5;
+    --flux: #5b246d;
+    --text: #f3ece2;
+    --text-dim: #c4e9ee;
+  }
+  *{ box-sizing: border-box; }
+  html, body{
+    margin:0; padding:0; width:100%; height:100%; overflow:hidden;
+    background: radial-gradient(ellipse at 50% 15%, #6e1717 0%, var(--bg-deep) 68%);
+    font-family: 'Lora', sans-serif;
+    color: var(--text);
+  }
+  #canvas-wrap{ position:fixed; inset:0; }
+  canvas{ display:block; touch-action:none; }
+
+  .hud{ position:fixed; top:0; left:0; width:100%; display:flex; justify-content:space-between;
+        align-items:flex-start; padding:22px 28px; pointer-events:none; z-index:5; }
+  .brand{ display:flex; flex-direction:column; gap:2px; }
+  .brand .title{ font-family:'Geist Pixel', sans-serif; font-weight:700; font-size:17px; letter-spacing:3px;
+                 color: var(--text); text-shadow: 0 0 18px rgba(41, 4, 59, 0.836); }
+  .brand .sub{ font-size:11px; letter-spacing:1.5px; color: var(--text-dim); text-transform:uppercase; }
+
+  .turn-pill{ pointer-events:auto; display:flex; align-items:center; gap:10px; background: rgba(24,18,13,0.75);
+              border:1px solid var(--line); backdrop-filter: blur(8px); padding:10px 18px; border-radius:999px;
+              box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+  .turn-dot{ width:12px; height:12px; border-radius:50%; transition: background .25s ease, box-shadow .25s ease; }
+  .turn-dot.x{ background: var(--ember); box-shadow: 0 0 12px var(--ember); }
+  .turn-dot.o{ background: var(--violet); box-shadow: 0 0 12px var(--violet); }
+  .turn-text{ font-size:13px; font-weight:600; letter-spacing:0.5px; }
+  .turn-text b{ font-family:'Space Grotesk'; font-weight:700; }
+
+  .info-msg{ position:fixed; bottom:26px; left:50%; transform:translateX(-50%); font-size:12px;
+             color: var(--text-dim); letter-spacing: 0.5px; z-index:5; pointer-events:none; min-height: 16px; }
+  .info-msg.warn{ color: var(--violet); }
+
+  .legend{ position:fixed; bottom:26px; right:28px; display:flex; gap:18px; z-index:5; pointer-events:none; }
+  .legend-item{ display:flex; align-items:center; gap:7px; font-size:11px; color:var(--text-dim); letter-spacing:0.5px; }
+  .legend-swatch{ width:13px; height:13px; border-radius:3px; }
+  .legend-swatch.x{ background: var(--ember); }
+  .legend-swatch.o{ background: var(--violet); }
+
+  /* Overlay screens */
+  .overlay{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+            background: rgba(12,9,7,0.75); backdrop-filter: blur(6px); z-index:20;
+            transition: opacity .35s ease; }
+  .overlay.hidden{ opacity:0; pointer-events:none; }
+  .hidden{ display:none !important; }
+  .panel{ background: linear-gradient(180deg, #1d1610 0%, #100c08 100%); border:1px solid var(--line);
+          border-radius:18px; padding:46px 52px; text-align:center; max-width:460px;
+          box-shadow: 0 24px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,122,60,0.05); }
+  .panel .glyph{ font-family:'Geist Pixel'; font-size:13px; letter-spacing:6px; color: var(--ember);
+                 text-shadow: 0 0 14px rgba(255,122,60,0.5); margin-bottom: 14px; }
+  .panel h1{ font-family:'Geist Pixel'; font-weight:700; font-size:27px; margin:0 0 10px;
+             letter-spacing:1px; line-height:1.4; }
+  .panel h1 span{ color: var(--ember); }
+  .panel p{ font-size:13.5px; color: var(--text-dim); line-height:1.6; margin: 0 0 28px; }
+
+  .btn{ font-family:'Geist Pixel'; font-weight:700; font-size:13px; letter-spacing:2px; border:none;
+        padding:15px 38px; border-radius:10px; cursor:pointer; color:#1a0f06;
+        background: linear-gradient(135deg, var(--ember), #ffb37a);
+        box-shadow: 0 10px 30px rgb(136, 8, 8); transition: transform .15s ease, box-shadow .15s ease; }
+  .btn:hover{ transform: translateY(-2px); box-shadow: 0 14px 36px rgba(255,122,60,0.4); }
+  .btn:active{ transform: translateY(0); }
+  .btn.gold{ background: linear-gradient(135deg, var(--flux), #ffe6a3); box-shadow: 0 10px 30px rgba(113, 3, 185, 0.28); }
+
+  .win-banner{ font-family:'Geist Pixel'; font-weight:700; font-size:19px; letter-spacing:1px; margin-bottom:22px; line-height:1.6; }
+  .win-banner .x{ color: var(--ember); text-shadow: 0 0 16px rgba(83, 154, 201, 0.6); }
+  .win-banner .o{ color: var(--violet); text-shadow: 0 0 16px rgba(47, 26, 113, 0.6); }
+
+  .hint{ position:fixed; top:22px; left:50%; transform:translateX(-50%); font-size:11px; color:var(--text-dim);
+         letter-spacing:0.5px; z-index:5; pointer-events:none; opacity:0; transition: opacity .4s ease 1.2s; }
+  .hint.show{ opacity:1; }
+</style>
+</head>
+<body>
+
+<div id="canvas-wrap"></div>
+
+<div class="hud">
+  <div class="brand">
+    <div class="title">TIC&nbsp;TAC&nbsp;TOE&nbsp;3D</div>
+    <div class="sub">tablero 4 × 4 × 4</div>
+  </div>
+  <div class="turn-pill" id="turnPill">
+    <div class="turn-dot x" id="turnDot"></div>
+    <div class="turn-text">Turno de <b id="turnLabel">X</b></div>
+  </div>
+</div>
+
+<div class="hint" id="dragHint">Arrastra para rotar · Rueda para hacer zoom · Clic en un cubo para jugar</div>
+<div class="info-msg" id="infoMsg"></div>
+<div class="legend">
+  <div class="legend-item"><div class="legend-swatch x"></div> Jugador 1 — X</div>
+  <div class="legend-item"><div class="legend-swatch o"></div> Jugador 2 — O</div>
+</div>
+
+<div class="overlay" id="startOverlay">
+  <div class="panel">
+    <div class="glyph">▲ ▼ ▲</div>
+    <h1>TIC TAC TOE <span>3D</span><br>4×4×4</h1>
+    <p>Conecta 4 fichas en línea recta dentro del cubo: horizontal, vertical, en profundidad,
+       o en cualquiera de las lineas diagonales — de cara o espaciales.</p>
+
+    <div id="menuInicial">
+      <button class="btn" id="btnCrearSala">CREAR SALA</button>
+      <div style="margin:14px 0; opacity:0.6; font-size:12px;">— o —</div>
+      <input id="inputCodigo" type="text" maxlength="6" placeholder="CÓDIGO DE SALA"
+             style="text-transform:uppercase; text-align:center; font-size:16px; letter-spacing:3px;
+                    padding:10px; border-radius:8px; border:1px solid var(--line);
+                    background:rgba(255,255,255,0.08); color:var(--text); width:100%; margin-bottom:10px;">
+      <button class="btn" id="btnUnirseSala">UNIRSE A SALA</button>
+    </div>
+
+    <div id="esperandoRival" class="hidden" style="margin-top:10px;">
+      <p>Comparte este código con tu rival:</p>
+      <div id="codigoMostrado" style="font-size:32px; font-weight:700; letter-spacing:6px; color: var(--ember);"></div>
+      <p style="margin-top:14px; font-size:13px; opacity:0.8;">Esperando a que se conecte...</p>
+    </div>
+
+    <p id="mensajeSala" style="color:#ff8080; margin-top:10px; font-size:13px;"></p>
+  </div>
+</div>
+
+<div class="overlay hidden" id="endOverlay">
+  <div class="panel">
+    <div class="win-banner" id="winBanner"></div>
+    <p>Cuatro en línea recta. Partida terminada.</p>
+    <button class="btn gold" id="restartBtn">JUGAR DE NUEVO</button>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  // ============================================================
+  // 0. MULTIJUGADOR: conexión y estado de sala
+  // ============================================================
+  const socket = io();
+  let miSala = null;
+  let miSimbolo = null;      // 0 = X, 1 = O (asignado por el servidor)
+  let partidaLista = false;  // true cuando ambos jugadores están conectados
+
+  // ============================================================
+  // 1. CONFIGURACIÓN Y ESTADO (misma lógica que la versión VPython)
+  // ============================================================
+  const TAM = 4;
+  const DIST = 2.3;          // separación entre celdas
+  const SIDE = 0.92;         // tamaño del cubo de celda
+  const OFFSET = (TAM - 1) * DIST / 2;
+
+  const COLOR_BG    = 0x040217;
+  const COLOR_GRID  = 0xC0C0C0;
+  const COLOR_GRID_HOVER = 0x10F9B7;
+  const COLOR_X     = 0xFFFF0A;
+  const COLOR_O     = 0xb09bf5;
+  const COLOR_WIN   = 0xffce54;
+
+  // jugadas[z][y][x] -> 0 libre, -1 = X, 1 = O   (idéntico al original)
+  let jugadas = [];
+  let jugadorActual = 0;   // 0 = X, 1 = O
+  let juegoTerminado = false;
+  let celdaHover = null;
+
+  function resetEstado(){
+    jugadas = [];
+    for (let z = 0; z < TAM; z++){
+      const plano = [];
+      for (let y = 0; y < TAM; y++) plano.push(new Array(TAM).fill(0));
+      jugadas.push(plano);
+    }
+    jugadorActual = 0;
+    juegoTerminado = false;
+  }
+  resetEstado();
+
+  // ============================================================
+  // 2. LÍNEAS GANADORAS — las 76 líneas posibles de un 4x4x4
+  //    (ejes, diagonales de cara, diagonales espaciales — igual
+  //    que horizontal()/vertical()/profundidad()/diagonal_xy() etc.)
+  // ============================================================
+  function key(x,y,z){ return x + "," + y + "," + z; }
+
+  const lineas = [];
+
+  // Ejes (horizontal / vertical / profundidad)
+  for (let y = 0; y < TAM; y++) for (let z = 0; z < TAM; z++){
+    const l = []; for (let x = 0; x < TAM; x++) l.push([x,y,z]); lineas.push(l);
+  }
+  for (let x = 0; x < TAM; x++) for (let z = 0; z < TAM; z++){
+    const l = []; for (let y = 0; y < TAM; y++) l.push([x,y,z]); lineas.push(l);
+  }
+  for (let x = 0; x < TAM; x++) for (let y = 0; y < TAM; y++){
+    const l = []; for (let z = 0; z < TAM; z++) l.push([x,y,z]); lineas.push(l);
+  }
+  // Diagonales de cara, por cada plano fijo
+  for (let z = 0; z < TAM; z++){
+    lineas.push([0,1,2,3].map(i => [i, i, z]));
+    lineas.push([0,1,2,3].map(i => [i, TAM-1-i, z]));
+  }
+  for (let y = 0; y < TAM; y++){
+    lineas.push([0,1,2,3].map(i => [i, y, i]));
+    lineas.push([0,1,2,3].map(i => [i, y, TAM-1-i]));
+  }
+  for (let x = 0; x < TAM; x++){
+    lineas.push([0,1,2,3].map(i => [x, i, i]));
+    lineas.push([0,1,2,3].map(i => [x, i, TAM-1-i]));
+  }
+  // Diagonales espaciales
+  lineas.push([0,1,2,3].map(i => [i, i, i]));
+  lineas.push([0,1,2,3].map(i => [i, i, TAM-1-i]));
+  lineas.push([0,1,2,3].map(i => [i, TAM-1-i, i]));
+  lineas.push([0,1,2,3].map(i => [TAM-1-i, i, i]));
+
+  // índice celda -> líneas que la contienen (para revisar solo lo necesario)
+  const lineasPorCelda = {};
+  lineas.forEach(linea => {
+    linea.forEach(([x,y,z]) => {
+      const k = key(x,y,z);
+      if (!lineasPorCelda[k]) lineasPorCelda[k] = [];
+      lineasPorCelda[k].push(linea);
+    });
+  });
+
+  function revisarVictoria(x,y,z){
+    const valor = jugadas[z][y][x];
+    const candidatas = lineasPorCelda[key(x,y,z)];
+    for (const linea of candidatas){
+      let suma = 0;
+      for (const [lx,ly,lz] of linea) suma += jugadas[lz][ly][lx];
+      if (suma === 4 * valor && Math.abs(suma) === 4) return linea;
+    }
+    return null;
+  }
+
+  // ============================================================
+  // 3. ESCENA THREE.JS
+  // ============================================================
+  const wrap = document.getElementById('canvas-wrap');
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(COLOR_BG, 0.018);
+
+  const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 200);
+  const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(COLOR_BG, 1);
+  wrap.appendChild(renderer.domElement);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const key1 = new THREE.PointLight(0xffb27a, 1.1, 60); key1.position.set(10,14,10); scene.add(key1);
+  const key2 = new THREE.PointLight(0xb09bf5, 0.55, 60); key2.position.set(-12,-6,-10); scene.add(key2);
+
+  // ---- Cámara orbital simple (sin dependencias externas) ----
+  const target = new THREE.Vector3(0,0,0);
+  let camDist = 13.5, camTheta = Math.PI/4, camPhi = Math.PI/2.7;
+  function updateCamera(){
+    camPhi = Math.max(0.25, Math.min(Math.PI-0.25, camPhi));
+    camDist = Math.max(6, Math.min(28, camDist));
+    camera.position.set(
+      target.x + camDist * Math.sin(camPhi) * Math.sin(camTheta),
+      target.y + camDist * Math.cos(camPhi),
+      target.z + camDist * Math.sin(camPhi) * Math.cos(camTheta)
+    );
+    camera.lookAt(target);
+  }
+  updateCamera();
+
+  // ---- Celdas del tablero ----
+  const cellGroup = new THREE.Group();
+  scene.add(cellGroup);
+  const cellEdgeGeo = new THREE.BoxGeometry(SIDE, SIDE, SIDE);
+  const edgesGeo = new THREE.EdgesGeometry(cellEdgeGeo);
+
+  const cells = {}; // key -> { hit, edges, piece }
+
+  function worldPos(x,y,z){
+    return new THREE.Vector3(x*DIST - OFFSET, y*DIST - OFFSET, z*DIST - OFFSET);
+  }
+
+  for (let z = 0; z < TAM; z++){
+    for (let y = 0; y < TAM; y++){
+      for (let x = 0; x < TAM; x++){
+        const p = worldPos(x,y,z);
+
+        const hitGeo = new THREE.BoxGeometry(SIDE*0.92, SIDE*0.92, SIDE*0.92);
+        const hitMat = new THREE.MeshBasicMaterial({ visible:false });
+        const hit = new THREE.Mesh(hitGeo, hitMat);
+        hit.position.copy(p);
+        hit.userData = { x, y, z };
+        cellGroup.add(hit);
+
+        const edges = new THREE.LineSegments(edgesGeo, new THREE.LineBasicMaterial({ color: COLOR_GRID, transparent:true, opacity:0.45 }));
+        edges.position.copy(p);
+        cellGroup.add(edges);
+
+        cells[key(x,y,z)] = { hit, edges, piece: null, pos: p };
+      }
+    }
+  }
+
+  // ---- geometría de fichas ----
+  const xGeo = new THREE.OctahedronGeometry(SIDE*0.34, 0);
+  const xMat = new THREE.MeshStandardMaterial({ color: COLOR_X, emissive: COLOR_X, emissiveIntensity: 0.35, metalness:0.3, roughness:0.35 });
+  const oGeo = new THREE.TorusGeometry(SIDE*0.27, SIDE*0.12, 16, 32);
+  const oMat = new THREE.MeshStandardMaterial({ color: COLOR_O, emissive: COLOR_O, emissiveIntensity: 0.35, metalness:0.3, roughness:0.35 });
+  const winMat = new THREE.MeshStandardMaterial({ color: COLOR_WIN, emissive: COLOR_WIN, emissiveIntensity: 0.9, metalness:0.4, roughness:0.25 });
+
+  function colocarFicha(x,y,z, jugadorIdx){
+    const c = cells[key(x,y,z)];
+    const geo = jugadorIdx === 0 ? xGeo : oGeo;
+    const mat = jugadorIdx === 0 ? xMat.clone() : oMat.clone();
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(c.pos);
+    mesh.scale.setScalar(0.001);
+    if (jugadorIdx === 1) mesh.rotation.x = Math.PI/2;
+    scene.add(mesh);
+    c.piece = mesh;
+    c.edges.material.color.set(jugadorIdx === 0 ? COLOR_X : COLOR_O);
+    c.edges.material.opacity = 0.85;
+  }
+
+  // línea dorada conectando la jugada ganadora
+  let winLine = null;
+  function dibujarLineaGanadora(celdasLinea){
+    celdasLinea.forEach(([x,y,z]) => {
+      const c = cells[key(x,y,z)];
+      if (c.piece) c.piece.material = winMat;
+      c.edges.material.color.set(COLOR_WIN);
+      c.edges.material.opacity = 1;
+    });
+    const pts = celdasLinea.map(([x,y,z]) => cells[key(x,y,z)].pos);
+    const geo = new THREE.BufferGeometry().setFromPoints(pts);
+    const mat = new THREE.LineBasicMaterial({ color: COLOR_WIN, transparent:true, opacity:0.9, linewidth:2 });
+    winLine = new THREE.Line(geo, mat);
+    scene.add(winLine);
+  }
+
+  // ============================================================
+  // 4. INTERACCIÓN: arrastrar para rotar, clic corto para jugar
+  // ============================================================
+  const raycaster = new THREE.Raycaster();
+  const mouseNDC = new THREE.Vector2();
+  let isDragging = false, dragMoved = false, lastX = 0, lastY = 0;
+  let menuActivo = true;
+
+  function setMouseNDC(clientX, clientY){
+    const r = renderer.domElement.getBoundingClientRect();
+    mouseNDC.x = ((clientX - r.left) / r.width) * 2 - 1;
+    mouseNDC.y = -((clientY - r.top) / r.height) * 2 + 1;
+  }
+
+  function pickCell(clientX, clientY){
+    setMouseNDC(clientX, clientY);
+    raycaster.setFromCamera(mouseNDC, camera);
+    const hits = raycaster.intersectObjects(cellGroup.children.filter(o => o.geometry.type === 'BoxGeometry' && o.material.visible === false));
+    return hits.length ? hits[0].object : null;
+  }
+
+  function onHover(clientX, clientY){
+    if (menuActivo || juegoTerminado) return;
+    const obj = pickCell(clientX, clientY);
+    if (celdaHover && celdaHover !== obj){
+      const { x,y,z } = celdaHover.userData;
+      const c = cells[key(x,y,z)];
+      if (!c.piece) { c.edges.material.color.set(COLOR_GRID); c.edges.material.opacity = 0.45; }
+      celdaHover = null;
+    }
+    if (obj){
+      const { x,y,z } = obj.userData;
+      const c = cells[key(x,y,z)];
+      if (!c.piece){
+        c.edges.material.color.set(COLOR_GRID_HOVER);
+        c.edges.material.opacity = 0.9;
+        celdaHover = obj;
+      }
+    }
+  }
+
+  const dom = renderer.domElement;
+  const infoMsg = document.getElementById('infoMsg');
+  const turnDot = document.getElementById('turnDot');
+  const turnLabel = document.getElementById('turnLabel');
+  const dragHint = document.getElementById('dragHint');
+
+  dom.addEventListener('pointerdown', (e) => {
+    isDragging = true; dragMoved = false; lastX = e.clientX; lastY = e.clientY;
+    dom.setPointerCapture(e.pointerId);
+  });
+  dom.addEventListener('pointermove', (e) => {
+    if (isDragging){
+      const dx = e.clientX - lastX, dy = e.clientY - lastY;
+      if (Math.abs(dx) + Math.abs(dy) > 3) dragMoved = true;
+      camTheta -= dx * 0.0065;
+      camPhi   -= dy * 0.0065;
+      lastX = e.clientX; lastY = e.clientY;
+      updateCamera();
+    } else {
+      onHover(e.clientX, e.clientY);
+    }
+  });
+  dom.addEventListener('pointerup', (e) => {
+    isDragging = false;
+    if (!dragMoved) handleClick(e.clientX, e.clientY);
+  });
+  dom.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    camDist += e.deltaY * 0.012;
+    updateCamera();
+  }, { passive:false });
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  function handleClick(clientX, clientY){
+    if (menuActivo || juegoTerminado || !partidaLista) return;
+    if (jugadorActual !== miSimbolo){
+      mostrarInfo('Espera tu turno', true);
+      return;
+    }
+    const obj = pickCell(clientX, clientY);
+    if (!obj) return;
+    const { x,y,z } = obj.userData;
+    if (jugadas[z][y][x] !== 0){
+      mostrarInfo('Esa celda ya está ocupada', true);
+      return;
+    }
+    socket.emit('jugada', { codigo: miSala, x, y, z });
+  }
+
+  // El servidor confirma la jugada (a AMBOS jugadores, incluido quien la hizo).
+  // Esto garantiza que los dos tableros apliquen las jugadas en el mismo orden.
+  socket.on('jugada', ({ x, y, z }) => {
+    jugar(x, y, z);
+  });
+
+  socket.on('reiniciar', () => {
+    reiniciar();
+  });
+
+  function jugar(x,y,z){
+    if (jugadas[z][y][x] !== 0){
+      mostrarInfo('Esa celda ya está ocupada', true);
+      return;
+    }
+    mostrarInfo('', false);
+    const idx = jugadorActual; // 0 = X, 1 = O
+    jugadas[z][y][x] = idx === 0 ? -1 : 1;
+    colocarFicha(x,y,z, idx);
+
+    const lineaGanadora = revisarVictoria(x,y,z);
+    if (lineaGanadora){
+      juegoTerminado = true;
+      dibujarLineaGanadora(lineaGanadora);
+      mostrarFin(idx);
+      return;
+    }
+
+    if (tableroLleno()){
+      juegoTerminado = true;
+      mostrarFin(-1); // empate
+      return;
+    }
+
+    jugadorActual = idx === 0 ? 1 : 0;
+    actualizarTurno();
+  }
+
+  function tableroLleno(){
+    for (let z=0; z<TAM; z++) for (let y=0; y<TAM; y++) for (let x=0; x<TAM; x++)
+      if (jugadas[z][y][x] === 0) return false;
+    return true;
+  }
+
+  function actualizarTurno(){
+    if (jugadorActual === 0){
+      turnDot.className = 'turn-dot x';
+      turnLabel.textContent = 'X';
+    } else {
+      turnDot.className = 'turn-dot o';
+      turnLabel.textContent = 'O';
+    }
+  }
+
+  function mostrarInfo(texto, esWarn){
+    infoMsg.textContent = texto;
+    infoMsg.className = 'info-msg' + (esWarn ? ' warn' : '');
+  }
+
+  // ============================================================
+  // 5. PANTALLAS (inicio / fin)
+  // ============================================================
+  const startOverlay = document.getElementById('startOverlay');
+  const endOverlay = document.getElementById('endOverlay');
+  const winBanner = document.getElementById('winBanner');
+
+  const menuInicial = document.getElementById('menuInicial');
+  const esperandoRival = document.getElementById('esperandoRival');
+  const codigoMostrado = document.getElementById('codigoMostrado');
+  const mensajeSala = document.getElementById('mensajeSala');
+  const inputCodigo = document.getElementById('inputCodigo');
+
+  function iniciarPartidaVisual(){
+    menuActivo = false;
+    partidaLista = true;
+    startOverlay.classList.add('hidden');
+    dragHint.classList.add('show');
+    setTimeout(() => dragHint.classList.remove('show'), 4200);
+    actualizarTurno();
+  }
+
+  document.getElementById('btnCrearSala').addEventListener('click', () => {
+    socket.emit('crear-sala');
+  });
+
+  document.getElementById('btnUnirseSala').addEventListener('click', () => {
+    const codigo = inputCodigo.value.trim().toUpperCase();
+    if (!codigo){
+      mensajeSala.textContent = 'Escribe un código de sala.';
+      return;
+    }
+    miSala = codigo;
+    socket.emit('unirse-sala', codigo);
+  });
+
+  // El servidor confirma que la sala fue creada (yo soy X, jugador 0)
+  socket.on('sala-creada', ({ codigo }) => {
+    miSala = codigo;
+    miSimbolo = 0;
+    menuInicial.classList.add('hidden');
+    esperandoRival.classList.remove('hidden');
+    codigoMostrado.textContent = codigo;
+  });
+
+  // Error al unirse (sala no existe o ya está llena)
+  socket.on('error-sala', (mensaje) => {
+    mensajeSala.textContent = mensaje;
+  });
+
+  // Ambos jugadores están listos: arranca la partida
+  socket.on('inicio-partida', ({ simbolo }) => {
+    if (miSimbolo === null) miSimbolo = simbolo; // quien se unió recibe su símbolo aquí (1 = O)
+    iniciarPartidaVisual();
+  });
+
+  // El rival se desconectó a mitad de partida
+  socket.on('rival-desconectado', () => {
+    mostrarInfo('Tu rival se desconectó de la partida.', true);
+    juegoTerminado = true;
+  });
+
+  document.getElementById('restartBtn').addEventListener('click', () => {
+    socket.emit('reiniciar', miSala);
+  });
+
+  function mostrarFin(idxGanador){
+    if (idxGanador === -1){
+      winBanner.innerHTML = 'EMPATE';
+    } else {
+      const letra = idxGanador === 0 ? 'X' : 'O';
+      const claseColor = idxGanador === 0 ? 'x' : 'o';
+      winBanner.innerHTML = `JUGADOR <span class="${claseColor}">${idxGanador+1}</span> (<span class="${claseColor}">${letra}</span>) GANÓ`;
+    }
+    endOverlay.classList.remove('hidden');
+  }
+
+  function reiniciar(){
+    resetEstado();
+    Object.values(cells).forEach(c => {
+      if (c.piece){ scene.remove(c.piece); c.piece = null; }
+      c.edges.material.color.set(COLOR_GRID);
+      c.edges.material.opacity = 0.45;
+    });
+    if (winLine){ scene.remove(winLine); winLine = null; }
+    endOverlay.classList.add('hidden');
+    actualizarTurno();
+    mostrarInfo('', false);
+  }
+
+  // ============================================================
+  // 6. BUCLE DE RENDER
+  // ============================================================
+  function animate(){
+    requestAnimationFrame(animate);
+    // pequeña rotación de "respiración" en las fichas para sensación 3D viva
+    const t = performance.now() * 0.001;
+    Object.values(cells).forEach(c => {
+      if (c.piece) c.piece.rotation.y = t * 0.6;
+    });
+    if (winLine) winLine.material.opacity = 0.6 + Math.sin(t*3)*0.3;
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  // animación de aparición de fichas (scale-in)
+  const origColocar = colocarFicha;
+  colocarFicha = function(x,y,z,jugadorIdx){
+    origColocar(x,y,z,jugadorIdx);
+    const c = cells[key(x,y,z)];
+    const mesh = c.piece;
+    let s = 0;
+    function grow(){
+      s += 0.12;
+      const v = Math.min(1, s);
+      mesh.scale.setScalar(v);
+      if (v < 1) requestAnimationFrame(grow);
+    }
+    grow();
+  };
+
+})();
+</script>
+</body>
+</html>
