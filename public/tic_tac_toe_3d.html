@@ -471,7 +471,7 @@
     if (lineaGanadora){
       juegoTerminado = true;
       dibujarLineaGanadora(lineaGanadora);
-      mostrarFin(idx);
+     setTimeout(() => mostrarFin(idx), 3200);
       return;
     }
 
